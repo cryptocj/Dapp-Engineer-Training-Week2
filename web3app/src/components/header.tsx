@@ -1,21 +1,44 @@
 //src/components/header.tsx
-import NextLink from "next/link"
-import { Flex, Button, useColorModeValue, Spacer, Heading, LinkBox, LinkOverlay } from '@chakra-ui/react'
+import NextLink from "next/link";
+import {
+  Flex,
+  Spacer,
+  Heading,
+  LinkBox,
+  LinkOverlay,
+  useDisclosure,
+} from "@chakra-ui/react";
+import ConnectButton from "./ConnectButton";
+import AccountModal from "./AccountModal";
 
-const siteTitle="FirstDAPP"
+const siteTitle = "FirstDAPP";
 export default function Header() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  function handleOpen() {
+    console.log("handle open");
+    onOpen();
+    console.log(isOpen);
+  }
 
   return (
-    <Flex as='header' bg={useColorModeValue('gray.100', 'gray.900')} p={4} alignItems='center'>
+    <Flex
+      as="header"
+      bg="gray.800"
+      p={4}
+      alignItems="center"
+      justifyContent="center"
+    >
       <LinkBox>
-        <NextLink href={'/'} passHref>
+        <NextLink href={"/"} passHref>
           <LinkOverlay>
             <Heading size="md">{siteTitle}</Heading>
           </LinkOverlay>
         </NextLink>
-      </LinkBox>      
+      </LinkBox>
       <Spacer />
-      <Button >Button for Account </Button>
+      <ConnectButton handleOpenModal={handleOpen}/>
+      <AccountModal isOpen={isOpen} onClose={onClose} />
     </Flex>
-  )
+  );
 }

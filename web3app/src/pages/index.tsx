@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import ReadERC20 from "components/ReadERC20";
 import TransferERC20 from "components/TransferERC20";
+import { getProvider } from "utils/provider";
 
 const Home: NextPage = () => {
   const [balance, setBalance] = useState<string | undefined>();
@@ -19,7 +20,7 @@ const Home: NextPage = () => {
     if (!currentAccount || !ethers.utils.isAddress(currentAccount)) return;
     //client side code
     if (!window.ethereum) return;
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    let provider = getProvider();
     provider.getBalance(currentAccount).then((result) => {
       setBalance(ethers.utils.formatEther(result));
     });
@@ -36,6 +37,7 @@ const Home: NextPage = () => {
       console.log("please install MetaMask");
       return;
     }
+    let provider = getProvider();
     /*
     //change from window.ethereum.enable() which is deprecated
     //see docs: https://docs.metamask.io/guide/ethereum-provider.html#legacy-methods
@@ -47,8 +49,6 @@ const Home: NextPage = () => {
     */
 
     //we can do it using ethers.js
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-
     // MetaMask requires requesting permission to connect users accounts
     provider
       .send("eth_requestAccounts", [])
