@@ -28,9 +28,9 @@ describe("GuessNumberGame", function () {
     randomNonce = "HELLO";
     randomNum = 689;
     playerNumber = 2;
-    nonceHash = utils.keccak256(utils.formatBytes32String(randomNonce));
+    nonceHash = utils.keccak256(utils.toUtf8Bytes(randomNonce));
     nonceNumHash = utils.keccak256(
-      utils.formatBytes32String(`${randomNonce}${randomNum}`)
+      utils.toUtf8Bytes(`${randomNonce}${randomNum}`)
     );
     guessNumberGame = await GuessNumberGame.deploy(
       nonceHash,
@@ -137,18 +137,17 @@ describe("GuessNumberGame", function () {
     it("Should not reveal after the game concluded", async () => {
       await guessNumberGame.connect(addr1).guess(1, { value: betAmount });
       await guessNumberGame.connect(addr2).guess(2, { value: betAmount });
-      console.log(utils.formatBytes32String(`${randomNonce}${randomNum}`));
       await guessNumberGame.reveal(
         utils.formatBytes32String(randomNonce),
         randomNum
       );
 
-      // await expect(
-      //   guessNumberGame.reveal(
-      //     utils.formatBytes32String(randomNonce),
-      //     randomNum
-      //   )
-      // ).revertedWith("The game was ended");
+      await expect(
+        guessNumberGame.reveal(
+          utils.formatBytes32String(randomNonce),
+          randomNum
+        )
+      ).revertedWith("The game was ended");
     });
   });
 });
