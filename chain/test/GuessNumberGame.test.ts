@@ -94,7 +94,18 @@ describe("GuessNumberGame", function () {
       ).revertedWith("No more seats left");
     });
 
-    it("Should not guess after the game concluded", async () => {});
+    it("Should not guess after the game concluded", async () => {
+      await guessNumberGame.connect(addr1).guess(1, { value: betAmount });
+      await guessNumberGame.connect(addr2).guess(2, { value: betAmount });
+      await guessNumberGame.reveal(
+        utils.formatBytes32String(randomNonce),
+        randomNum
+      );
+
+      await expect(
+        guessNumberGame.connect(addrs[0]).guess(3, { value: betAmount })
+      ).revertedWith("The game was ended");
+    });
   });
 
   describe("reveal", async () => {
