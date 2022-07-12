@@ -68,7 +68,7 @@ contract GuessNumberGame {
             revert("The number should be in range of [0, 1000)");
         }
 
-        require(players.length == playerNumber, "joined players are enough");
+        require(players.length == playerNumber, "joined players are not enough");
         // check keccak256(nonce) == nonceHash
         require(calNonceHash(nonce) == nonceHash, "invalid nonce");
 

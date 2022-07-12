@@ -142,7 +142,7 @@ describe("GuessNumberGame", function () {
           utils.formatBytes32String(randomNonce),
           randomNum
         )
-      ).revertedWith("joined players are enough");
+      ).revertedWith("joined players are not enough");
     });
 
     it("Should not reveal after the game concluded", async () => {
