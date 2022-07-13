@@ -82,9 +82,9 @@ contract GuessNumberGame {
         // the number should be [0, 1000), otherwise
         if (number < 0 || number >= 1000) {
             sendReward(players);
+        } else {
+            conclude(number);
         }
-
-        conclude(number);
 
         // check who has the closet guessing
         concluded = true;
