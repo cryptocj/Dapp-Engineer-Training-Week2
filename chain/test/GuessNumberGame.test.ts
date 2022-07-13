@@ -179,5 +179,26 @@ describe("GuessNumberGame", function () {
         betAmount.mul(3)
       );
     });
+
+    it("Should reward evenly if have the same delta", async () => {
+      await guessNumberGame.connect(addr1).guess(688, { value: betAmount });
+      await guessNumberGame.connect(addr2).guess(690, { value: betAmount });
+      const account1BalanceBefore = await provider.getBalance(addr1.address);
+      const account2BalanceBefore = await provider.getBalance(addr2.address);
+
+      await guessNumberGame.reveal(
+        utils.formatBytes32String(randomNonce),
+        randomNum
+      );
+      const account1BalanceAfter = await provider.getBalance(addr1.address);
+      const account2BalanceAfter = await provider.getBalance(addr2.address);
+
+      expect(account1BalanceAfter.sub(account1BalanceBefore)).equal(
+        betAmount.mul(15).div(10)
+      );
+      expect(account2BalanceAfter.sub(account2BalanceBefore)).equal(
+        betAmount.mul(15).div(10)
+      );
+    });
   });
 });
