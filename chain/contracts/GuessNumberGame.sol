@@ -14,10 +14,12 @@ contract GuessNumberGame {
     uint256 public betAmount;
 
     struct Player {
-        address to;
+        address addr;
         uint16 guessedNumber;
     }
     mapping(address => uint16) public guessedNumbers;
+    mapping(int16 => Player[]) public playersByDelta;
+
     Player[] public players;
 
     constructor(
@@ -48,7 +50,7 @@ contract GuessNumberGame {
             "The bet amount is not the same as the host set"
         );
         for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].to == msg.sender) {
+            if (players[i].addr == msg.sender) {
                 revert("Can not guess twice");
             }
 
@@ -63,12 +65,11 @@ contract GuessNumberGame {
 
     function reveal(bytes32 nonce, uint16 number) external {
         require(!concluded, "The game was ended");
-        // the number should be [0, 1000)
-        if (number < 0 || number >= 1000) {
-            revert("The number should be in range of [0, 1000)");
-        }
 
-        require(players.length == playerNumber, "joined players are not enough");
+        require(
+            players.length == playerNumber,
+            "joined players are not enough"
+        );
         // check keccak256(nonce) == nonceHash
         require(calNonceHash(nonce) == nonceHash, "invalid nonce");
 
@@ -78,8 +79,54 @@ contract GuessNumberGame {
             "invalid number"
         );
 
+        // the number should be [0, 1000), otherwise
+        if (number < 0 || number >= 1000) {
+            sendReward(players);
+        }
+
+        conclude(number);
+
         // check who has the closet guessing
         concluded = true;
+    }
+
+    function conclude(uint16 number) private {
+        Player[] memory wonPlayers = getWonPlayers(number);
+        sendReward(wonPlayers);
+    }
+
+    function sendReward(Player[] memory wonPlayers) private {
+        require(wonPlayers.length > 0, "none player won");
+
+        uint256 totalAmount = betAmount * (1 + playerNumber);
+        uint256 rewardAmount = totalAmount / wonPlayers.length;
+        uint256 leftAmount = totalAmount - rewardAmount * wonPlayers.length;
+
+        if (leftAmount > 0) {
+            payable(wonPlayers[0].addr).transfer(leftAmount); // give more reward to the first player if possible because first one has more risk.
+        }
+
+        for (uint8 i = 0; i < wonPlayers.length; i++) {
+            payable(wonPlayers[i].addr).transfer(rewardAmount);
+        }
+    }
+
+    function getWonPlayers(uint16 number) private returns (Player[] memory) {
+        int16 minDelta = 9999;
+        int16 delta = 0;
+        for (uint8 i = 0; i < playerNumber; i++) {
+            if (players[i].guessedNumber > number) {
+                delta = int16(players[i].guessedNumber - number);
+            } else {
+                delta = int16(number - players[i].guessedNumber);
+            }
+
+            if (delta < minDelta) {
+                minDelta = delta;
+            }
+            playersByDelta[delta].push(players[i]);
+        }
+        return playersByDelta[minDelta];
     }
 
     function calNonceHash(bytes32 nonce) public pure returns (bytes32) {
