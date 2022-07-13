@@ -3,11 +3,21 @@ pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
 
+// loopholes
+// - if the host uses another wallet to join this game, the last player can not win
+// - the host always lose money
+// Improved solution:
+// - it's better to generate a random secret number nobody could know it before the reveal
+// - there is no host, everyone could be a player
 contract GuessNumberGame {
     address public host;
 
-    bytes32 public nonceHash;
-    bytes32 public nonceNumHash;
+    // why using hash to store?
+    // - for sure only the host know the secret number
+    // - and also the host can approve the secret number is stored before the reveal
+    // - because the storage can be read by RPC method `ethers.provider.getStorageAt(contractAddress, paddedSlot)` no matter it's public or private
+    bytes32 nonceHash;
+    bytes32 nonceNumHash;
 
     uint256 public playerNumber;
     bool public concluded;
@@ -18,7 +28,7 @@ contract GuessNumberGame {
         uint16 guessedNumber;
     }
     mapping(address => uint16) public guessedNumbers;
-    mapping(int16 => Player[]) public playersByDelta;
+    mapping(int16 => Player[]) playersByDelta;
 
     Player[] public players;
 
