@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "hardhat/console.sol";
 
 contract OptimizedWATER is ERC20 {
     constructor(uint256 initialSupply) ERC20("WaterToken", "WATER") {
@@ -65,13 +66,31 @@ contract OptimizedFruitStand {
         return 0;
     }
 
-    function fib(uint256 n) public view returns (uint256 fn) {
+    function fib(uint256 n) private pure returns (uint256 a) {
         if (n == 0) {
             return 0;
-        } else if (n == 1) {
-            return 1;
-        } else if (n > 1) {
-            return fib(n - 2) + fib(n - 1);
         }
+        uint256 h = n / 2;
+        uint256 mask = 1;
+        // find highest set bit in n
+        while (mask <= h) {
+            mask <<= 1;
+        }
+        mask >>= 1;
+        a = 1;
+        uint256 b = 1;
+        uint256 c;
+        while (mask > 0) {
+            c = a * a + b * b;
+            if (n & mask > 0) {
+                b = b * (b + 2 * a);
+                a = c;
+            } else {
+                a = a * (2 * b - a);
+                b = c;
+            }
+            mask >>= 1;
+        }
+        return a;
     }
 }
