@@ -26,4 +26,13 @@ describe("ChequeBank", function () {
     balance = await chequeBank.balanceOf();
     expect(balance).equal(depositAmount);
   });
+
+  it("Should deposit 0 successfully without changing balance", async function () {
+    const depositAmount = 0;
+    await chequeBank.deposit({
+      value: depositAmount,
+    });
+    let balance = await chequeBank.balanceOf();
+    expect(balance).equal(0);
+  });
 });

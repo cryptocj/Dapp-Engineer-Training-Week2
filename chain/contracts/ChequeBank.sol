@@ -31,12 +31,16 @@ contract ChequeBank {
     mapping(address => uint256) _balances;
 
     function deposit() external payable {
-        _balances[msg.sender] += msg.value;
+        if (msg.value > 0) {
+            _balances[msg.sender] += msg.value;
+        }
     }
 
     function withdraw(uint256 amount) external {
-        payable(msg.sender).transfer(amount);
-        _balances[msg.sender] -= amount;
+        if (amount > 0) {
+            payable(msg.sender).transfer(amount);
+            _balances[msg.sender] -= amount;
+        }
     }
 
     function withdrawTo(uint256 amount, address payable recipient) external {}
