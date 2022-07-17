@@ -37,10 +37,12 @@ contract ChequeBank {
     }
 
     function withdraw(uint256 amount) external {
-        if (amount > 0) {
-            payable(msg.sender).transfer(amount);
-            _balances[msg.sender] -= amount;
-        }
+        require(
+            amount <= _balances[msg.sender],
+            "not enough balance to withdraw"
+        );
+        payable(msg.sender).transfer(amount);
+        _balances[msg.sender] -= amount;
     }
 
     function withdrawTo(uint256 amount, address payable recipient) external {}

@@ -35,4 +35,20 @@ describe("ChequeBank", function () {
     let balance = await chequeBank.balanceOf();
     expect(balance).equal(0);
   });
+
+  it("Should withdraw successfully and change balance", async function () {
+    const depositAmount = ethers.utils.parseEther("1.0");
+    await chequeBank.deposit({ value: depositAmount });
+    await chequeBank.withdraw(depositAmount);
+    let balance = await chequeBank.balanceOf();
+    expect(balance).equal(0);
+  });
+
+  it("Should withdraw failed if not enough balance", async function () {
+    const depositAmount = ethers.utils.parseEther("1.0");
+    await chequeBank.deposit({ value: depositAmount });
+    await expect(chequeBank.withdraw(depositAmount.mul(2))).revertedWith(
+      "not enough balance to withdraw"
+    );
+  });
 });
