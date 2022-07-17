@@ -45,16 +45,16 @@ contract ChequeBank {
     }
 
     function withdraw(uint256 amount) external hasEnoughBalance(amount) {
-        payable(msg.sender).transfer(amount);
         _balances[msg.sender] -= amount;
+        payable(msg.sender).transfer(amount);
     }
 
     function withdrawTo(uint256 amount, address payable recipient)
         external
         hasEnoughBalance(amount)
     {
-        recipient.transfer(amount);
         _balances[msg.sender] -= amount;
+        recipient.transfer(amount);
     }
 
     function balanceOf() external view returns (uint256) {
