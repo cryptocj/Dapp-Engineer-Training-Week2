@@ -7,9 +7,13 @@ import {
   FruitStand__factory,
   MELON,
   OptimizedFruitStand,
+  OptimizedFruitStandV2,
+  OptimizedFruitStandV2__factory,
   OptimizedFruitStand__factory,
   OptimizedMELON,
+  OptimizedMELONV2,
   OptimizedWATER,
+  OptimizedWATERV2,
   WATER,
 } from "../typechain";
 import { BigNumber } from "ethers";
@@ -24,10 +28,14 @@ describe("FruitStand", function () {
   let FruitStand: FruitStand__factory;
   let optimizedFruitStand: OptimizedFruitStand;
   let OptimizedFruitStand: OptimizedFruitStand__factory;
+  let optimizedFruitStandV2: OptimizedFruitStandV2;
+  let OptimizedFruitStandV2: OptimizedFruitStandV2__factory;
   let water: WATER;
   let melon: MELON;
   let optimizedWater: OptimizedWATER;
   let optimizedMelon: OptimizedMELON;
+  let optimizedWaterV2: OptimizedWATERV2;
+  let optimizedMelonV2: OptimizedMELONV2;
   let gasPrice: BigNumber;
 
   beforeEach(async function () {
@@ -38,6 +46,9 @@ describe("FruitStand", function () {
     OptimizedFruitStand = await ethers.getContractFactory(
       "OptimizedFruitStand"
     );
+    OptimizedFruitStandV2 = await ethers.getContractFactory(
+      "OptimizedFruitStandV2"
+    );
     const initialSupply = ethers.utils.parseEther("1000000.0");
     let WATER = await ethers.getContractFactory("WATER");
     let MELON = await ethers.getContractFactory("MELON");
@@ -47,6 +58,38 @@ describe("FruitStand", function () {
     let OptimizedMELON = await ethers.getContractFactory("OptimizedMELON");
     optimizedWater = await OptimizedWATER.deploy(initialSupply);
     optimizedMelon = await OptimizedMELON.deploy(initialSupply);
+    let OptimizedWATERV2 = await ethers.getContractFactory("OptimizedWATERV2");
+    let OptimizedMELONV2 = await ethers.getContractFactory("OptimizedMELONV2");
+    optimizedWaterV2 = await OptimizedWATERV2.deploy(initialSupply);
+    optimizedMelonV2 = await OptimizedMELONV2.deploy(initialSupply);
+
+    optimizedFruitStandV2 = await OptimizedFruitStandV2.deploy(
+      optimizedWaterV2.address,
+      optimizedMelonV2.address
+    );
+
+    optimizedFruitStand = await OptimizedFruitStand.deploy(
+      optimizedWater.address,
+      optimizedMelon.address
+    );
+
+    fruitStand = await FruitStand.deploy(water.address, melon.address);
+
+    await optimizedMelonV2.transfer(
+      optimizedFruitStandV2.address,
+      100000000000,
+      {
+        from: owner.address,
+      }
+    );
+
+    await optimizedMelon.transfer(optimizedFruitStand.address, 100000000000, {
+      from: owner.address,
+    });
+
+    await melon.transfer(fruitStand.address, 100000000000, {
+      from: owner.address,
+    });
   });
 
   it("Should have less gas cost to deploy after optimized", async function () {
@@ -72,21 +115,60 @@ describe("FruitStand", function () {
       optimizedWater.address,
       optimizedMelon.address
     );
-    await optimizedMelon.transfer(optimizedFruitStand.address, 100000, {
+    await optimizedMelon.transfer(optimizedFruitStand.address, 100000000000, {
       from: owner.address,
     });
     await optimizedFruitStand.stake(10);
-    await provider.send("hardhat_mine", ["0xa"]);
+    await provider.send("hardhat_mine", ["0x10"]);
     const optimizedGasCost = (
       await (await optimizedFruitStand.stake(10)).wait()
     ).gasUsed;
 
     fruitStand = await FruitStand.deploy(water.address, melon.address);
-    await melon.transfer(fruitStand.address, 100000, { from: owner.address });
+    await melon.transfer(fruitStand.address, 100000000000, {
+      from: owner.address,
+    });
     await fruitStand.stake(10);
-    await provider.send("hardhat_mine", ["0xa"]);
+    await provider.send("hardhat_mine", ["0x10"]);
     const gasCost = (await (await fruitStand.stake(10)).wait()).gasUsed;
-
+    console.log(gasCost, optimizedGasCost);
     expect(optimizedGasCost.lt(gasCost)).eq(true);
+  });
+
+  it("V2 use mapping to store the fib result in advance", async function () {
+    let optimizedGasCostV2 = (
+      await optimizedFruitStandV2.deployTransaction.wait()
+    ).gasUsed;
+
+    let optimizedGasCost = (await optimizedFruitStand.deployTransaction.wait())
+      .gasUsed;
+
+    let gasCost = (await fruitStand.deployTransaction.wait()).gasUsed;
+
+    console.log(
+      gasCost.toString(),
+      optimizedGasCost.toString(),
+      optimizedGasCostV2.toString()
+    );
+
+    await optimizedFruitStandV2.stake(10);
+    await provider.send("hardhat_mine", ["0x10"]);
+    optimizedGasCostV2 = (await (await optimizedFruitStandV2.stake(10)).wait())
+      .gasUsed;
+
+    await optimizedFruitStand.stake(10);
+    await provider.send("hardhat_mine", ["0x10"]);
+    optimizedGasCost = (await (await optimizedFruitStand.stake(10)).wait())
+      .gasUsed;
+
+    await fruitStand.stake(10);
+    await provider.send("hardhat_mine", ["0x10"]);
+    gasCost = (await (await fruitStand.stake(10)).wait()).gasUsed;
+
+    console.log(
+      gasCost.toString(),
+      optimizedGasCost.toString(),
+      optimizedGasCostV2.toString()
+    );
   });
 });
