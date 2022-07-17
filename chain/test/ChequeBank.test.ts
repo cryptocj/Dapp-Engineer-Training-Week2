@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { MockProvider } from "ethereum-waffle";
 import { ethers, waffle } from "hardhat";
 import { ChequeBank, ChequeBank__factory } from "../typechain";
+import { balanceChanged } from "./BalanceHelper";
 
 describe("ChequeBank", function () {
   let owner: SignerWithAddress;
@@ -50,5 +51,14 @@ describe("ChequeBank", function () {
     await expect(chequeBank.withdraw(depositAmount.mul(2))).revertedWith(
       "not enough balance to withdraw"
     );
+  });
+
+  it("Should withdrawTo successfully and change balance", async function () {
+    const depositAmount = ethers.utils.parseEther("1.0");
+    await chequeBank.deposit({ value: depositAmount });
+    let balanceDelta = await balanceChanged(addr1, async () => {
+      await chequeBank.withdrawTo(depositAmount, addr1.address);
+    });
+    expect(balanceDelta).equal(depositAmount);
   });
 });
