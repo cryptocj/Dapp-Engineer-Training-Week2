@@ -49,26 +49,21 @@ describe("FruitStand", function () {
     optimizedMelon = await OptimizedMELON.deploy(initialSupply);
   });
 
-  async function getGasCost(
-    account: SignerWithAddress,
-    f: () => Promise<void>
-  ): Promise<BigNumber> {
-    let accountBalanceBefore = await provider.getBalance(account.address);
-    await f();
-    let accountBalanceAfter = await provider.getBalance(account.address);
-    return accountBalanceBefore.sub(accountBalanceAfter).div(gasPrice);
-  }
-
   it("Should have less gas cost to deploy after optimized", async function () {
-    const optimizedGasCost = await getGasCost(addr2, async () => {
-      await OptimizedFruitStand.connect(addr2).deploy(
-        water.address,
-        melon.address
-      );
-    });
-    const gasCost = await getGasCost(addr1, async () => {
-      await FruitStand.connect(addr1).deploy(water.address, melon.address);
-    });
+    const optimizedGasCost = (
+      await (
+        await OptimizedFruitStand.connect(addr2).deploy(
+          water.address,
+          melon.address
+        )
+      ).deployTransaction.wait()
+    ).gasUsed;
+
+    const gasCost = (
+      await (
+        await FruitStand.connect(addr1).deploy(water.address, melon.address)
+      ).deployTransaction.wait()
+    ).gasUsed;
     expect(optimizedGasCost.lt(gasCost)).eq(true);
   });
 
@@ -82,17 +77,15 @@ describe("FruitStand", function () {
     });
     await optimizedFruitStand.stake(10);
     await provider.send("hardhat_mine", ["0xa"]);
-    const optimizedGasCost = await getGasCost(owner, async () => {
-      await optimizedFruitStand.stake(10);
-    });
+    const optimizedGasCost = (
+      await (await optimizedFruitStand.stake(10)).wait()
+    ).gasUsed;
 
     fruitStand = await FruitStand.deploy(water.address, melon.address);
     await melon.transfer(fruitStand.address, 100000, { from: owner.address });
     await fruitStand.stake(10);
     await provider.send("hardhat_mine", ["0xa"]);
-    const gasCost = await getGasCost(owner, async () => {
-      await fruitStand.stake(10);
-    });
+    const gasCost = (await (await fruitStand.stake(10)).wait()).gasUsed;
 
     expect(optimizedGasCost.lt(gasCost)).eq(true);
   });
