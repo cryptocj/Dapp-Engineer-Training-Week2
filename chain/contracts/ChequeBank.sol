@@ -30,22 +30,32 @@ contract ChequeBank {
 
     mapping(address => uint256) _balances;
 
+    modifier hasEnoughBalance(uint256 amount) {
+        require(
+            amount <= _balances[msg.sender],
+            "not enough balance to withdraw"
+        );
+        _;
+    }
+
     function deposit() external payable {
         if (msg.value > 0) {
             _balances[msg.sender] += msg.value;
         }
     }
 
-    function withdraw(uint256 amount) external {
-        require(
-            amount <= _balances[msg.sender],
-            "not enough balance to withdraw"
-        );
+    function withdraw(uint256 amount) external hasEnoughBalance(amount) {
         payable(msg.sender).transfer(amount);
         _balances[msg.sender] -= amount;
     }
 
-    function withdrawTo(uint256 amount, address payable recipient) external {}
+    function withdrawTo(uint256 amount, address payable recipient)
+        external
+        hasEnoughBalance(amount)
+    {
+        recipient.transfer(amount);
+        _balances[msg.sender] -= amount;
+    }
 
     function balanceOf() external view returns (uint256) {
         return _balances[msg.sender];
