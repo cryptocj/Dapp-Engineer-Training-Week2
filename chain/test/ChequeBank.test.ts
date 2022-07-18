@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { MockProvider } from "ethereum-waffle";
-import { BigNumber } from "ethers";
+import { BigNumber, BigNumberish } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { ChequeBank, ChequeBank__factory } from "../typechain";
 import { balanceChanged } from "./BalanceHelper";
@@ -66,27 +66,23 @@ describe("ChequeBank", function () {
   });
 
   describe("redeem", function () {
-    let chequeInfo: any;
+    interface ChequeInfo {
+      amount: BigNumber;
+      chequeId: string;
+      validFrom: BigNumberish;
+      validThru: BigNumberish;
+      payer: string;
+      payee: string;
+    }
+    let chequeInfo: ChequeInfo;
     let depositAmount: BigNumber;
     let contractAddress: string;
-    this.beforeEach(async () => {
-      chequeInfo = {
-        amount: ethers.utils.parseEther("0.1"),
-        chequeId: ethers.utils.hexZeroPad(
-          ethers.utils.toUtf8Bytes("11111111"),
-          32
-        ),
-        validFrom: 0,
-        validThru: 0,
-        payer: owner.address,
-        payee: addr1.address,
-      };
+    let flatSig: string;
 
-      depositAmount = ethers.utils.parseEther("1.0");
-      await chequeBank.deposit({ value: depositAmount });
-      contractAddress = chequeBank.address;
-    });
-    it("Should redeem successfully by offline signature", async function () {
+    async function signChequeInfo(
+      chequeInfo: ChequeInfo,
+      contractAddress: string
+    ): Promise<string> {
       const messageHash = ethers.utils.keccak256(
         ethers.utils.solidityPack(
           [
@@ -109,9 +105,29 @@ describe("ChequeBank", function () {
           ]
         )
       );
-
       let messageHashBytes = ethers.utils.arrayify(messageHash);
-      let flatSig = await owner.signMessage(messageHashBytes);
+      let sig = await owner.signMessage(messageHashBytes);
+      return sig;
+    }
+    this.beforeEach(async () => {
+      depositAmount = ethers.utils.parseEther("1.0");
+      await chequeBank.deposit({ value: depositAmount });
+      contractAddress = chequeBank.address;
+      chequeInfo = {
+        amount: ethers.utils.parseEther("0.1"),
+        chequeId: ethers.utils.hexZeroPad(
+          ethers.utils.toUtf8Bytes("11111111"),
+          32
+        ),
+        validFrom: 0,
+        validThru: 0,
+        payer: owner.address,
+        payee: addr1.address,
+      };
+      flatSig = await signChequeInfo(chequeInfo, contractAddress);
+    });
+
+    it("Should redeem successfully by offline signature", async function () {
       let txFee = BigNumber.from(0);
       let balanceDelta = await balanceChanged(addr1, async () => {
         let tx = await chequeBank.connect(addr1).redeem({
@@ -133,6 +149,26 @@ describe("ChequeBank", function () {
           sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
         })
       ).revertedWith("mismatched payee");
+    });
+
+    it("Should redeem failed if wrong signature", async function () {
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
+        })
+      ).reverted;
+    });
+
+    it("Should redeem failed if payer mismatched", async function () {
+      chequeInfo.payer = addr2.address;
+      flatSig = await signChequeInfo(chequeInfo, contractAddress);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: flatSig,
+        })
+      ).revertedWith("mismatched payer");
     });
   });
 });
