@@ -30,6 +30,7 @@ contract ChequeBank {
 
     mapping(address => uint256) _balances;
     mapping(bytes32 => address) _revokedCheques;
+    mapping(bytes32 => SignOverInfo) _signOverInfos;
 
     modifier hasEnoughBalance(uint256 amount) {
         require(
@@ -72,7 +73,7 @@ contract ChequeBank {
         );
 
         require(
-            verifyHash(chequeData) == chequeData.chequeInfo.payer,
+            verifyChequeData(chequeData) == chequeData.chequeInfo.payer,
             "mismatched payer"
         );
 
@@ -106,7 +107,7 @@ contract ChequeBank {
         SignOver[] memory signOverData
     ) public view returns (bool) {}
 
-    function verifyHash(Cheque memory chequeData)
+    function verifyChequeData(Cheque memory chequeData)
         private
         view
         returns (address signer)
@@ -123,13 +124,39 @@ contract ChequeBank {
             )
         );
 
+        return verifyMessage(message, chequeData.sig);
+    }
+
+    function verifySignOver(SignOver memory signOver)
+        private
+        pure
+        returns (address signer)
+    {
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                bytes4(0xFFFFDEAD),
+                signOver.signOverInfo.counter,
+                signOver.signOverInfo.chequeId,
+                signOver.signOverInfo.oldPayee,
+                signOver.signOverInfo.newPayee
+            )
+        );
+
+        return verifyMessage(message, signOver.sig);
+    }
+
+    function verifyMessage(bytes32 message, bytes memory sig)
+        private
+        pure
+        returns (address signer)
+    {
         bytes32 messageDigest = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", message)
         );
         uint8 v;
         bytes32 r;
         bytes32 s;
-        (v, r, s) = splitSignature(chequeData.sig);
+        (v, r, s) = splitSignature(sig);
 
         return ecrecover(messageDigest, v, r, s);
     }
