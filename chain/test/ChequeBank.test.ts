@@ -65,57 +65,74 @@ describe("ChequeBank", function () {
     expect(balanceDelta).equal(depositAmount);
   });
 
-  it("Should redeem successfully by offline signature", async function () {
-    const depositAmount = ethers.utils.parseEther("1.0");
-    await chequeBank.deposit({ value: depositAmount });
-    const contractAddress = chequeBank.address;
-    let chequeInfo = {
-      amount: ethers.utils.parseEther("0.1"),
-      chequeId: ethers.utils.hexZeroPad(
-        ethers.utils.toUtf8Bytes("11111111"),
-        32
-      ),
-      validFrom: 0,
-      validThru: 0,
-      payer: owner.address,
-      payee: addr1.address,
-    };
-    const messageHash = ethers.utils.keccak256(
-      ethers.utils.solidityPack(
-        [
-          "bytes32",
-          "bytes20",
-          "bytes20",
-          "uint256",
-          "bytes20",
-          "uint32",
-          "uint32",
-        ],
-        [
-          chequeInfo.chequeId,
-          ethers.utils.arrayify(chequeInfo.payer),
-          ethers.utils.arrayify(chequeInfo.payee),
-          chequeInfo.amount,
-          ethers.utils.arrayify(contractAddress),
-          chequeInfo.validFrom,
-          chequeInfo.validThru,
-        ]
-      )
-    );
+  describe("redeem", function () {
+    let chequeInfo: any;
+    let depositAmount: BigNumber;
+    let contractAddress: string;
+    this.beforeEach(async () => {
+      chequeInfo = {
+        amount: ethers.utils.parseEther("0.1"),
+        chequeId: ethers.utils.hexZeroPad(
+          ethers.utils.toUtf8Bytes("11111111"),
+          32
+        ),
+        validFrom: 0,
+        validThru: 0,
+        payer: owner.address,
+        payee: addr1.address,
+      };
 
-    let messageHashBytes = ethers.utils.arrayify(messageHash);
-    let flatSig = await owner.signMessage(messageHashBytes);
-    let txFee = BigNumber.from(0);
-    let balanceDelta = await balanceChanged(addr1, async () => {
-      let tx = await chequeBank.connect(addr1).redeem({
-        chequeInfo: chequeInfo,
-        sig: flatSig,
-      });
-      let receipt = await tx.wait();
-      txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      depositAmount = ethers.utils.parseEther("1.0");
+      await chequeBank.deposit({ value: depositAmount });
+      contractAddress = chequeBank.address;
     });
-    let balanceAfter = await chequeBank.balanceOf();
-    expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
-    expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
+    it("Should redeem successfully by offline signature", async function () {
+      const messageHash = ethers.utils.keccak256(
+        ethers.utils.solidityPack(
+          [
+            "bytes32",
+            "bytes20",
+            "bytes20",
+            "uint256",
+            "bytes20",
+            "uint32",
+            "uint32",
+          ],
+          [
+            chequeInfo.chequeId,
+            ethers.utils.arrayify(chequeInfo.payer),
+            ethers.utils.arrayify(chequeInfo.payee),
+            chequeInfo.amount,
+            ethers.utils.arrayify(contractAddress),
+            chequeInfo.validFrom,
+            chequeInfo.validThru,
+          ]
+        )
+      );
+
+      let messageHashBytes = ethers.utils.arrayify(messageHash);
+      let flatSig = await owner.signMessage(messageHashBytes);
+      let txFee = BigNumber.from(0);
+      let balanceDelta = await balanceChanged(addr1, async () => {
+        let tx = await chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: flatSig,
+        });
+        let receipt = await tx.wait();
+        txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      });
+      let balanceAfter = await chequeBank.balanceOf();
+      expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+      expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
+    });
+
+    it("Should redeem failed if payee mismatched", async function () {
+      await expect(
+        chequeBank.redeem({
+          chequeInfo: chequeInfo,
+          sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
+        })
+      ).revertedWith("mismatched payee");
+    });
   });
 });
