@@ -29,6 +29,7 @@ contract ChequeBank {
     }
 
     mapping(address => uint256) _balances;
+    mapping(bytes32 => address) _revokedCheques;
 
     modifier hasEnoughBalance(uint256 amount) {
         require(
@@ -65,6 +66,12 @@ contract ChequeBank {
         require(chequeData.chequeInfo.payee == msg.sender, "mismatched payee");
 
         require(
+            _revokedCheques[chequeData.chequeInfo.chequeId] !=
+                chequeData.chequeInfo.payer,
+            "this cheque was revoked"
+        );
+
+        require(
             verifyHash(chequeData) == chequeData.chequeInfo.payer,
             "mismatched payer"
         );
@@ -82,7 +89,9 @@ contract ChequeBank {
         );
     }
 
-    function revoke(bytes32 chequeId) external {}
+    function revoke(bytes32 chequeId) external {
+        _revokedCheques[chequeId] = msg.sender;
+    }
 
     function notifySignOver(SignOver memory signOverData) external {}
 

@@ -181,5 +181,15 @@ describe("ChequeBank", function () {
         })
       ).revertedWith("not enough balance to redeem");
     });
+
+    it("Should redeem failed if revoked", async () => {
+      await chequeBank.revoke(chequeInfo.chequeId);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: flatSig,
+        })
+      ).revertedWith("this cheque was revoked");
+    });
   });
 });
