@@ -170,5 +170,16 @@ describe("ChequeBank", function () {
         })
       ).revertedWith("mismatched payer");
     });
+
+    it("Should redeem failed if balance is not enough", async function () {
+      chequeInfo.amount = ethers.utils.parseEther("1.1");
+      flatSig = await signChequeInfo(chequeInfo, contractAddress);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: flatSig,
+        })
+      ).revertedWith("not enough balance to redeem");
+    });
   });
 });
