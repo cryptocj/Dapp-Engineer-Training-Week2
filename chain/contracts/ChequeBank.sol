@@ -61,7 +61,26 @@ contract ChequeBank {
         return _balances[msg.sender];
     }
 
-    function redeem(Cheque memory chequeData) external {}
+    function redeem(Cheque memory chequeData) external {
+        require(chequeData.chequeInfo.payee == msg.sender, "mismatched payee");
+
+        require(
+            verifyHash(chequeData) == chequeData.chequeInfo.payer,
+            "mismatched payer"
+        );
+
+        require(
+            chequeData.chequeInfo.amount <=
+                _balances[chequeData.chequeInfo.payer],
+            "not enough balance to redeem"
+        );
+
+        _balances[chequeData.chequeInfo.payer] -= chequeData.chequeInfo.amount;
+
+        payable(chequeData.chequeInfo.payee).transfer(
+            chequeData.chequeInfo.amount
+        );
+    }
 
     function revoke(bytes32 chequeId) external {}
 
@@ -77,4 +96,56 @@ contract ChequeBank {
         Cheque memory chequeData,
         SignOver[] memory signOverData
     ) public view returns (bool) {}
+
+    function verifyHash(Cheque memory chequeData)
+        private
+        view
+        returns (address signer)
+    {
+        bytes32 message = keccak256(
+            abi.encodePacked(
+                chequeData.chequeInfo.chequeId,
+                chequeData.chequeInfo.payer,
+                chequeData.chequeInfo.payee,
+                chequeData.chequeInfo.amount,
+                this,
+                chequeData.chequeInfo.validFrom,
+                chequeData.chequeInfo.validThru
+            )
+        );
+
+        bytes32 messageDigest = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", message)
+        );
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        (v, r, s) = splitSignature(chequeData.sig);
+
+        return ecrecover(messageDigest, v, r, s);
+    }
+
+    function splitSignature(bytes memory sig)
+        public
+        pure
+        returns (
+            uint8,
+            bytes32,
+            bytes32
+        )
+    {
+        require(sig.length == 65);
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            // first 32 bytes, after the length prefix
+            r := mload(add(sig, 32))
+            // second 32 bytes
+            s := mload(add(sig, 64))
+            // final byte (first byte of the next 32 bytes)
+            v := byte(0, mload(add(sig, 96)))
+        }
+        return (v, r, s);
+    }
 }

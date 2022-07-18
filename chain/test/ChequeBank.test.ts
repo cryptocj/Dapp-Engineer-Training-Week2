@@ -1,6 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { MockProvider } from "ethereum-waffle";
+import { BigNumber } from "ethers";
 import { ethers, waffle } from "hardhat";
 import { ChequeBank, ChequeBank__factory } from "../typechain";
 import { balanceChanged } from "./BalanceHelper";
@@ -13,11 +14,13 @@ describe("ChequeBank", function () {
   let provider: MockProvider;
   let chequeBank: ChequeBank;
   let ChequeBank: ChequeBank__factory;
+  let gasPrice: BigNumber;
   beforeEach(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     provider = waffle.provider;
     ChequeBank = await ethers.getContractFactory("ChequeBank");
     chequeBank = await ChequeBank.deploy();
+    gasPrice = await provider.getGasPrice();
   });
   it("Should deposit successfully and change balance", async function () {
     const depositAmount = ethers.utils.parseEther("1.0");
@@ -60,5 +63,59 @@ describe("ChequeBank", function () {
       await chequeBank.withdrawTo(depositAmount, addr1.address);
     });
     expect(balanceDelta).equal(depositAmount);
+  });
+
+  it("Should redeem successfully by offline signature", async function () {
+    const depositAmount = ethers.utils.parseEther("1.0");
+    await chequeBank.deposit({ value: depositAmount });
+    const contractAddress = chequeBank.address;
+    let chequeInfo = {
+      amount: ethers.utils.parseEther("0.1"),
+      chequeId: ethers.utils.hexZeroPad(
+        ethers.utils.toUtf8Bytes("11111111"),
+        32
+      ),
+      validFrom: 0,
+      validThru: 0,
+      payer: owner.address,
+      payee: addr1.address,
+    };
+    const messageHash = ethers.utils.keccak256(
+      ethers.utils.solidityPack(
+        [
+          "bytes32",
+          "bytes20",
+          "bytes20",
+          "uint256",
+          "bytes20",
+          "uint32",
+          "uint32",
+        ],
+        [
+          chequeInfo.chequeId,
+          ethers.utils.arrayify(chequeInfo.payer),
+          ethers.utils.arrayify(chequeInfo.payee),
+          chequeInfo.amount,
+          ethers.utils.arrayify(contractAddress),
+          chequeInfo.validFrom,
+          chequeInfo.validThru,
+        ]
+      )
+    );
+
+    let messageHashBytes = ethers.utils.arrayify(messageHash);
+    let flatSig = await owner.signMessage(messageHashBytes);
+    let txFee = BigNumber.from(0);
+    let balanceDelta = await balanceChanged(addr1, async () => {
+      let tx = await chequeBank.connect(addr1).redeem({
+        chequeInfo: chequeInfo,
+        sig: flatSig,
+      });
+      let receipt = await tx.wait();
+      txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+    });
+    let balanceAfter = await chequeBank.balanceOf();
+    expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+    expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
   });
 });
