@@ -1,8 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 contract ChequeBank {
     struct ChequeInfo {
         uint256 amount;
@@ -157,13 +155,35 @@ contract ChequeBank {
     ) external redeemCheck(chequeData) {
         for (uint256 index = 0; index < signOverData.length; index++) {
             _signOverCheck(signOverData[index]);
+
+            if (
+                signOverData[index].signOverInfo.chequeId !=
+                chequeData.chequeInfo.chequeId
+            ) {
+                revert("mismatched cheque id");
+            }
         }
 
         // the last one can redeem
         require(
             chequeData.chequeInfo.payee ==
-                signOverData[signOverData.length - 1].signOverInfo.oldPayee,
+                signOverData[0].signOverInfo.oldPayee,
             "mismatched payee"
+        );
+
+        SignOver memory finalSignOver = signOverData[signOverData.length - 1];
+
+        _withdrawnCheques[chequeData.chequeInfo.chequeId] = finalSignOver
+            .signOverInfo
+            .newPayee;
+
+        _balances[chequeData.chequeInfo.payer] -= chequeData.chequeInfo.amount;
+
+        _signOverInfos[chequeData.chequeInfo.chequeId] = finalSignOver
+            .signOverInfo;
+
+        payable(finalSignOver.signOverInfo.newPayee).transfer(
+            chequeData.chequeInfo.amount
         );
     }
 

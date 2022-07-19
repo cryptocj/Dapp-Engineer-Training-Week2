@@ -333,6 +333,25 @@ describe("ChequeBank", function () {
         let balanceAfter = await chequeBank.balanceOf();
         expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
       });
+
+      // ================ redeemSignOver =======================
+      it("Should redeemSignOver successfully", async () => {
+        await chequeBank.connect(addr2).redeemSignOver(
+          {
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          },
+          [
+            {
+              signOverInfo: signOverInfo,
+              sig: signOverInfoSig,
+            },
+          ]
+        );
+
+        let balanceAfter = await chequeBank.balanceOf();
+        expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+      });
     });
   });
 });
