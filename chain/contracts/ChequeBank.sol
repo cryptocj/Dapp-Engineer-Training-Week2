@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
+
 contract ChequeBank {
     struct ChequeInfo {
         uint256 amount;
@@ -119,6 +121,10 @@ contract ChequeBank {
 
         _signOverInfos[signOverData.signOverInfo.chequeId] = signOverData
             .signOverInfo;
+    }
+
+    function signOverCounter(bytes32 chequeId) external view returns (uint256) {
+        return _signOverInfos[chequeId].counter;
     }
 
     function redeemSignOver(
