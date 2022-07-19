@@ -115,7 +115,7 @@ contract ChequeBank {
                         .counter !=
                 1
             ) {
-                revert("counter invalid");
+                revert("counter should be incremental");
             }
         }
 

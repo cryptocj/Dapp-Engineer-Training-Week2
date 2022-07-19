@@ -251,6 +251,20 @@ describe("ChequeBank", function () {
         expect(counter).equal(1);
       });
 
+      it("Should success 6 times with incremental counter", async function () {
+        for (let index = 1; index <= 6; index++) {
+          signOverInfo.counter = index;
+          signOverInfoSig = await signChequeInfo(signOverInfo);
+          await chequeBank.notifySignOver({
+            signOverInfo: signOverInfo,
+            sig: signOverInfoSig,
+          });
+
+          let counter = await chequeBank.signOverCounter(signOverInfo.chequeId);
+          expect(counter).equal(index);
+        }
+      });
+
       it("Should failed if payee mismatched", async () => {
         signOverInfo.oldPayee = owner.address;
         signOverInfoSig = await signChequeInfo(signOverInfo);
@@ -273,6 +287,22 @@ describe("ChequeBank", function () {
             })
           ).revertedWith("counter should be [1, 6]");
         });
+      });
+
+      it("Should failed if counter is not incremental", async function () {
+        await chequeBank.notifySignOver({
+          signOverInfo: signOverInfo,
+          sig: signOverInfoSig,
+        });
+
+        signOverInfo.counter = 3;
+        signOverInfoSig = await signChequeInfo(signOverInfo);
+        await expect(
+          chequeBank.connect(addr2).notifySignOver({
+            signOverInfo: signOverInfo,
+            sig: signOverInfoSig,
+          })
+        ).revertedWith("counter should be incremental");
       });
     });
   });
