@@ -73,7 +73,7 @@ contract ChequeBank {
         );
 
         require(
-            verifyChequeData(chequeData) == chequeData.chequeInfo.payer,
+            verifyCheque(chequeData) == chequeData.chequeInfo.payer,
             "mismatched payer"
         );
 
@@ -94,7 +94,32 @@ contract ChequeBank {
         _revokedCheques[chequeId] = msg.sender;
     }
 
-    function notifySignOver(SignOver memory signOverData) external {}
+    function notifySignOver(SignOver memory signOverData) external {
+        require(
+            verifySignOver(signOverData) == signOverData.signOverInfo.oldPayee,
+            "mismatched old payee"
+        );
+
+        require(
+            signOverData.signOverInfo.counter >= 1 &&
+                signOverData.signOverInfo.counter <= 6,
+            "counter should be [1, 6]"
+        );
+
+        if (_signOverInfos[signOverData.signOverInfo.chequeId].counter > 0) {
+            if (
+                signOverData.signOverInfo.counter -
+                    _signOverInfos[signOverData.signOverInfo.chequeId]
+                        .counter !=
+                1
+            ) {
+                revert("counter invalid");
+            }
+        }
+
+        _signOverInfos[signOverData.signOverInfo.chequeId] = signOverData
+            .signOverInfo;
+    }
 
     function redeemSignOver(
         Cheque memory chequeData,
@@ -107,7 +132,7 @@ contract ChequeBank {
         SignOver[] memory signOverData
     ) public view returns (bool) {}
 
-    function verifyChequeData(Cheque memory chequeData)
+    function verifyCheque(Cheque memory chequeData)
         private
         view
         returns (address signer)
