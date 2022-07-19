@@ -225,7 +225,7 @@ describe("ChequeBank", function () {
           )
         );
         let messageHashBytes = ethers.utils.arrayify(messageHash);
-        let sig = await owner.signMessage(messageHashBytes);
+        let sig = await addr1.signMessage(messageHashBytes);
         return sig;
       }
       this.beforeEach(async () => {
@@ -241,13 +241,38 @@ describe("ChequeBank", function () {
         signOverInfoSig = await signChequeInfo(signOverInfo);
       });
 
+      it("Should success", async function () {
+        await chequeBank.notifySignOver({
+          signOverInfo: signOverInfo,
+          sig: signOverInfoSig,
+        });
+
+        let counter = await chequeBank.signOverCounter(signOverInfo.chequeId);
+        expect(counter).equal(1);
+      });
+
       it("Should failed if payee mismatched", async () => {
+        signOverInfo.oldPayee = owner.address;
+        signOverInfoSig = await signChequeInfo(signOverInfo);
         await expect(
           chequeBank.notifySignOver({
             signOverInfo: signOverInfo,
             sig: signOverInfoSig,
           })
         ).revertedWith("mismatched old payee");
+      });
+
+      it("Should failed if counter is not in the range [1,6]", async function () {
+        [0, 7].forEach(async function (value) {
+          signOverInfo.counter = value;
+          signOverInfoSig = await signChequeInfo(signOverInfo);
+          await expect(
+            chequeBank.notifySignOver({
+              signOverInfo: signOverInfo,
+              sig: signOverInfoSig,
+            })
+          ).revertedWith("counter should be [1, 6]");
+        });
       });
     });
   });
