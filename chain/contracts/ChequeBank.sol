@@ -32,6 +32,7 @@ contract ChequeBank {
 
     mapping(address => uint256) _balances;
     mapping(bytes32 => address) _revokedCheques;
+    mapping(bytes32 => address) _withdrawnCheques;
     mapping(bytes32 => SignOverInfo) _signOverInfos;
 
     modifier hasEnoughBalance(uint256 amount) {
@@ -40,6 +41,56 @@ contract ChequeBank {
             "not enough balance to withdraw"
         );
         _;
+    }
+
+    modifier redeemCheck(Cheque memory chequeData) {
+        require(
+            _revokedCheques[chequeData.chequeInfo.chequeId] !=
+                chequeData.chequeInfo.payer,
+            "this cheque was revoked"
+        );
+
+        require(
+            _withdrawnCheques[chequeData.chequeInfo.chequeId] !=
+                chequeData.chequeInfo.payee,
+            "this cheque was withdrawn"
+        );
+
+        require(
+            verifyCheque(chequeData) == chequeData.chequeInfo.payer,
+            "mismatched payer"
+        );
+
+        require(
+            chequeData.chequeInfo.amount <=
+                _balances[chequeData.chequeInfo.payer],
+            "not enough balance to redeem"
+        );
+        _;
+    }
+
+    function _signOverCheck(SignOver memory signOverData) private view {
+        require(
+            verifySignOver(signOverData) == signOverData.signOverInfo.oldPayee,
+            "mismatched old payee"
+        );
+
+        require(
+            signOverData.signOverInfo.counter >= 1 &&
+                signOverData.signOverInfo.counter <= 6,
+            "counter should be [1, 6]"
+        );
+
+        if (_signOverInfos[signOverData.signOverInfo.chequeId].counter > 0) {
+            if (
+                signOverData.signOverInfo.counter -
+                    _signOverInfos[signOverData.signOverInfo.chequeId]
+                        .counter !=
+                1
+            ) {
+                revert("counter should be incremental");
+            }
+        }
     }
 
     function deposit() external payable {
@@ -65,25 +116,18 @@ contract ChequeBank {
         return _balances[msg.sender];
     }
 
-    function redeem(Cheque memory chequeData) external {
-        require(chequeData.chequeInfo.payee == msg.sender, "mismatched payee");
+    function redeem(Cheque memory chequeData) external redeemCheck(chequeData) {
+        if (
+            _signOverInfos[chequeData.chequeInfo.chequeId].newPayee !=
+            msg.sender
+        ) {
+            require(
+                chequeData.chequeInfo.payee == msg.sender,
+                "mismatched payee"
+            );
+        }
 
-        require(
-            _revokedCheques[chequeData.chequeInfo.chequeId] !=
-                chequeData.chequeInfo.payer,
-            "this cheque was revoked"
-        );
-
-        require(
-            verifyCheque(chequeData) == chequeData.chequeInfo.payer,
-            "mismatched payer"
-        );
-
-        require(
-            chequeData.chequeInfo.amount <=
-                _balances[chequeData.chequeInfo.payer],
-            "not enough balance to redeem"
-        );
+        _withdrawnCheques[chequeData.chequeInfo.chequeId] = msg.sender;
 
         _balances[chequeData.chequeInfo.payer] -= chequeData.chequeInfo.amount;
 
@@ -97,27 +141,7 @@ contract ChequeBank {
     }
 
     function notifySignOver(SignOver memory signOverData) external {
-        require(
-            verifySignOver(signOverData) == signOverData.signOverInfo.oldPayee,
-            "mismatched old payee"
-        );
-
-        require(
-            signOverData.signOverInfo.counter >= 1 &&
-                signOverData.signOverInfo.counter <= 6,
-            "counter should be [1, 6]"
-        );
-
-        if (_signOverInfos[signOverData.signOverInfo.chequeId].counter > 0) {
-            if (
-                signOverData.signOverInfo.counter -
-                    _signOverInfos[signOverData.signOverInfo.chequeId]
-                        .counter !=
-                1
-            ) {
-                revert("counter should be incremental");
-            }
-        }
+        _signOverCheck(signOverData);
 
         _signOverInfos[signOverData.signOverInfo.chequeId] = signOverData
             .signOverInfo;
@@ -130,7 +154,18 @@ contract ChequeBank {
     function redeemSignOver(
         Cheque memory chequeData,
         SignOver[] memory signOverData
-    ) external {}
+    ) external redeemCheck(chequeData) {
+        for (uint256 index = 0; index < signOverData.length; index++) {
+            _signOverCheck(signOverData[index]);
+        }
+
+        // the last one can redeem
+        require(
+            chequeData.chequeInfo.payee ==
+                signOverData[signOverData.length - 1].signOverInfo.oldPayee,
+            "mismatched payee"
+        );
+    }
 
     function isChequeValid(
         address payee,

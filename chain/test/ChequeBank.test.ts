@@ -143,11 +143,25 @@ describe("ChequeBank", function () {
         expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
       });
 
+      it("Should not redeem twice", async function () {
+        await chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        });
+
+        await expect(
+          chequeBank.connect(addr1).redeem({
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          })
+        ).revertedWith("this cheque was withdrawn");
+      });
+
       it("Should redeem failed if payee mismatched", async function () {
         await expect(
           chequeBank.redeem({
             chequeInfo: chequeInfo,
-            sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
+            sig: chequeInfoSig,
           })
         ).revertedWith("mismatched payee");
       });
