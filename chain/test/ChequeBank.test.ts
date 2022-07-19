@@ -318,6 +318,21 @@ describe("ChequeBank", function () {
           })
         ).revertedWith("counter should be incremental");
       });
+
+      it("Should redeem successfully after sign over", async () => {
+        await chequeBank.notifySignOver({
+          signOverInfo: signOverInfo,
+          sig: signOverInfoSig,
+        });
+
+        await chequeBank.connect(addr2).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        });
+
+        let balanceAfter = await chequeBank.balanceOf();
+        expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+      });
     });
   });
 });
