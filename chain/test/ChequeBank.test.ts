@@ -77,7 +77,7 @@ describe("ChequeBank", function () {
     let chequeInfo: ChequeInfo;
     let depositAmount: BigNumber;
     let contractAddress: string;
-    let flatSig: string;
+    let chequeInfoSig: string;
 
     async function signChequeInfo(
       chequeInfo: ChequeInfo,
@@ -124,72 +124,131 @@ describe("ChequeBank", function () {
         payer: owner.address,
         payee: addr1.address,
       };
-      flatSig = await signChequeInfo(chequeInfo, contractAddress);
+      chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
     });
 
-    it("Should redeem successfully by offline signature", async function () {
-      let txFee = BigNumber.from(0);
-      let balanceDelta = await balanceChanged(addr1, async () => {
-        let tx = await chequeBank.connect(addr1).redeem({
-          chequeInfo: chequeInfo,
-          sig: flatSig,
+    describe("redeem", async () => {
+      it("Should redeem successfully by offline signature", async function () {
+        let txFee = BigNumber.from(0);
+        let balanceDelta = await balanceChanged(addr1, async () => {
+          let tx = await chequeBank.connect(addr1).redeem({
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          });
+          let receipt = await tx.wait();
+          txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
         });
-        let receipt = await tx.wait();
-        txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+        let balanceAfter = await chequeBank.balanceOf();
+        expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+        expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
       });
-      let balanceAfter = await chequeBank.balanceOf();
-      expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
-      expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
+
+      it("Should redeem failed if payee mismatched", async function () {
+        await expect(
+          chequeBank.redeem({
+            chequeInfo: chequeInfo,
+            sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
+          })
+        ).revertedWith("mismatched payee");
+      });
+
+      it("Should redeem failed if wrong signature", async function () {
+        await expect(
+          chequeBank.connect(addr1).redeem({
+            chequeInfo: chequeInfo,
+            sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
+          })
+        ).reverted;
+      });
+
+      it("Should redeem failed if payer mismatched", async function () {
+        chequeInfo.payer = addr2.address;
+        chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+        await expect(
+          chequeBank.connect(addr1).redeem({
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          })
+        ).revertedWith("mismatched payer");
+      });
+
+      it("Should redeem failed if balance is not enough", async function () {
+        chequeInfo.amount = ethers.utils.parseEther("1.1");
+        chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+        await expect(
+          chequeBank.connect(addr1).redeem({
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          })
+        ).revertedWith("not enough balance to redeem");
+      });
+
+      it("Should redeem failed if revoked", async () => {
+        await chequeBank.revoke(chequeInfo.chequeId);
+        await expect(
+          chequeBank.connect(addr1).redeem({
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          })
+        ).revertedWith("this cheque was revoked");
+      });
+
+      // TODO
+      it("Should expired", async () => {});
     });
 
-    it("Should redeem failed if payee mismatched", async function () {
-      await expect(
-        chequeBank.redeem({
-          chequeInfo: chequeInfo,
-          sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
-        })
-      ).revertedWith("mismatched payee");
-    });
+    describe("notifySignOver", async () => {
+      interface SignOverInfo {
+        counter: BigNumberish;
+        chequeId: string;
+        oldPayee: string;
+        newPayee: string;
+      }
+      let signOverInfo: SignOverInfo;
+      let signOverInfoSig: string;
+      let signOverMagicNumber: string;
 
-    it("Should redeem failed if wrong signature", async function () {
-      await expect(
-        chequeBank.connect(addr1).redeem({
-          chequeInfo: chequeInfo,
-          sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
-        })
-      ).reverted;
-    });
+      async function signChequeInfo(
+        signOverInfo: SignOverInfo
+      ): Promise<string> {
+        signOverMagicNumber = "0xFFFFDEAD";
+        const messageHash = ethers.utils.keccak256(
+          ethers.utils.solidityPack(
+            ["bytes4", "uint8", "bytes32", "bytes20", "bytes20"],
+            [
+              ethers.utils.arrayify(signOverMagicNumber),
+              signOverInfo.counter,
+              signOverInfo.chequeId,
+              ethers.utils.arrayify(signOverInfo.oldPayee),
+              ethers.utils.arrayify(signOverInfo.newPayee),
+            ]
+          )
+        );
+        let messageHashBytes = ethers.utils.arrayify(messageHash);
+        let sig = await owner.signMessage(messageHashBytes);
+        return sig;
+      }
+      this.beforeEach(async () => {
+        signOverInfo = {
+          counter: 1,
+          chequeId: ethers.utils.hexZeroPad(
+            ethers.utils.toUtf8Bytes("11111111"),
+            32
+          ),
+          oldPayee: addr1.address,
+          newPayee: addr2.address,
+        };
+        signOverInfoSig = await signChequeInfo(signOverInfo);
+      });
 
-    it("Should redeem failed if payer mismatched", async function () {
-      chequeInfo.payer = addr2.address;
-      flatSig = await signChequeInfo(chequeInfo, contractAddress);
-      await expect(
-        chequeBank.connect(addr1).redeem({
-          chequeInfo: chequeInfo,
-          sig: flatSig,
-        })
-      ).revertedWith("mismatched payer");
-    });
-
-    it("Should redeem failed if balance is not enough", async function () {
-      chequeInfo.amount = ethers.utils.parseEther("1.1");
-      flatSig = await signChequeInfo(chequeInfo, contractAddress);
-      await expect(
-        chequeBank.connect(addr1).redeem({
-          chequeInfo: chequeInfo,
-          sig: flatSig,
-        })
-      ).revertedWith("not enough balance to redeem");
-    });
-
-    it("Should redeem failed if revoked", async () => {
-      await chequeBank.revoke(chequeInfo.chequeId);
-      await expect(
-        chequeBank.connect(addr1).redeem({
-          chequeInfo: chequeInfo,
-          sig: flatSig,
-        })
-      ).revertedWith("this cheque was revoked");
+      it("Should failed if payee mismatched", async () => {
+        await expect(
+          chequeBank.notifySignOver({
+            signOverInfo: signOverInfo,
+            sig: signOverInfoSig,
+          })
+        ).revertedWith("mismatched old payee");
+      });
     });
   });
 });
