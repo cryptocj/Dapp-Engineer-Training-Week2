@@ -127,89 +127,87 @@ describe("ChequeBank", function () {
       chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
     });
 
-    describe("redeem", async () => {
-      it("Should redeem successfully by offline signature", async function () {
-        let txFee = BigNumber.from(0);
-        let balanceDelta = await balanceChanged(addr1, async () => {
-          let tx = await chequeBank.connect(addr1).redeem({
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          });
-          let receipt = await tx.wait();
-          txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
-        });
-        let balanceAfter = await chequeBank.balanceOf();
-        expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
-        expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
-      });
-
-      it("Should not redeem twice", async function () {
-        await chequeBank.connect(addr1).redeem({
+    it("Should redeem successfully by offline signature", async function () {
+      let txFee = BigNumber.from(0);
+      let balanceDelta = await balanceChanged(addr1, async () => {
+        let tx = await chequeBank.connect(addr1).redeem({
           chequeInfo: chequeInfo,
           sig: chequeInfoSig,
         });
-
-        await expect(
-          chequeBank.connect(addr1).redeem({
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          })
-        ).revertedWith("this cheque was withdrawn");
+        let receipt = await tx.wait();
+        txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
       });
-
-      it("Should redeem failed if payee mismatched", async function () {
-        await expect(
-          chequeBank.redeem({
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          })
-        ).revertedWith("mismatched payee");
-      });
-
-      it("Should redeem failed if wrong signature", async function () {
-        await expect(
-          chequeBank.connect(addr1).redeem({
-            chequeInfo: chequeInfo,
-            sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
-          })
-        ).reverted;
-      });
-
-      it("Should redeem failed if payer mismatched", async function () {
-        chequeInfo.payer = addr2.address;
-        chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
-        await expect(
-          chequeBank.connect(addr1).redeem({
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          })
-        ).revertedWith("mismatched payer");
-      });
-
-      it("Should redeem failed if balance is not enough", async function () {
-        chequeInfo.amount = ethers.utils.parseEther("1.1");
-        chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
-        await expect(
-          chequeBank.connect(addr1).redeem({
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          })
-        ).revertedWith("not enough balance to redeem");
-      });
-
-      it("Should redeem failed if revoked", async () => {
-        await chequeBank.revoke(chequeInfo.chequeId);
-        await expect(
-          chequeBank.connect(addr1).redeem({
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          })
-        ).revertedWith("this cheque was revoked");
-      });
-
-      // TODO
-      it("Should expired", async () => {});
+      let balanceAfter = await chequeBank.balanceOf();
+      expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+      expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
     });
+
+    it("Should not redeem twice", async function () {
+      await chequeBank.connect(addr1).redeem({
+        chequeInfo: chequeInfo,
+        sig: chequeInfoSig,
+      });
+
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith("this cheque was withdrawn");
+    });
+
+    it("Should redeem failed if payee mismatched", async function () {
+      await expect(
+        chequeBank.redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith("mismatched payee");
+    });
+
+    it("Should redeem failed if wrong signature", async function () {
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: ethers.utils.hexZeroPad(ethers.utils.toUtf8Bytes("test"), 32),
+        })
+      ).reverted;
+    });
+
+    it("Should redeem failed if payer mismatched", async function () {
+      chequeInfo.payer = addr2.address;
+      chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith("mismatched payer");
+    });
+
+    it("Should redeem failed if balance is not enough", async function () {
+      chequeInfo.amount = ethers.utils.parseEther("1.1");
+      chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith("not enough balance to redeem");
+    });
+
+    it("Should redeem failed if revoked", async () => {
+      await chequeBank.revoke(chequeInfo.chequeId);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith("this cheque was revoked");
+    });
+
+    // TODO
+    it("Should expired", async () => {});
 
     describe("notifySignOver", async () => {
       interface SignOverInfo {
@@ -222,7 +220,7 @@ describe("ChequeBank", function () {
       let signOverInfoSig: string;
       let signOverMagicNumber: string;
 
-      async function signChequeInfo(
+      async function getSigOfSignChequeInfo(
         signOverInfo: SignOverInfo
       ): Promise<string> {
         signOverMagicNumber = "0xFFFFDEAD";
@@ -252,7 +250,7 @@ describe("ChequeBank", function () {
           oldPayee: addr1.address,
           newPayee: addr2.address,
         };
-        signOverInfoSig = await signChequeInfo(signOverInfo);
+        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
       });
 
       it("Should success", async function () {
@@ -268,7 +266,7 @@ describe("ChequeBank", function () {
       it("Should success 6 times with incremental counter", async function () {
         for (let index = 1; index <= 6; index++) {
           signOverInfo.counter = index;
-          signOverInfoSig = await signChequeInfo(signOverInfo);
+          signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
           await chequeBank.notifySignOver({
             signOverInfo: signOverInfo,
             sig: signOverInfoSig,
@@ -281,7 +279,7 @@ describe("ChequeBank", function () {
 
       it("Should failed if payee mismatched", async () => {
         signOverInfo.oldPayee = owner.address;
-        signOverInfoSig = await signChequeInfo(signOverInfo);
+        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
         await expect(
           chequeBank.notifySignOver({
             signOverInfo: signOverInfo,
@@ -293,7 +291,7 @@ describe("ChequeBank", function () {
       it("Should failed if counter is not in the range [1,6]", async function () {
         [0, 7].forEach(async function (value) {
           signOverInfo.counter = value;
-          signOverInfoSig = await signChequeInfo(signOverInfo);
+          signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
           await expect(
             chequeBank.notifySignOver({
               signOverInfo: signOverInfo,
@@ -310,7 +308,7 @@ describe("ChequeBank", function () {
         });
 
         signOverInfo.counter = 3;
-        signOverInfoSig = await signChequeInfo(signOverInfo);
+        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
         await expect(
           chequeBank.connect(addr2).notifySignOver({
             signOverInfo: signOverInfo,
