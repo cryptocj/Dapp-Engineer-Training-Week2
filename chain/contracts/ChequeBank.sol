@@ -220,9 +220,14 @@ contract ChequeBank {
             ) {
                 revert("mismatched cheque id");
             }
+            emit NotifySignOver(
+                signOverData[index].signOverInfo.chequeId,
+                signOverData[index].signOverInfo.counter,
+                signOverData[index].signOverInfo.oldPayee,
+                signOverData[index].signOverInfo.newPayee
+            );
         }
 
-        // the last one can redeem
         require(
             chequeData.chequeInfo.payee ==
                 signOverData[0].signOverInfo.oldPayee,
@@ -241,6 +246,13 @@ contract ChequeBank {
             .signOverInfo;
 
         payable(finalSignOver.signOverInfo.newPayee).transfer(
+            chequeData.chequeInfo.amount
+        );
+
+        emit Redeem(
+            chequeData.chequeInfo.chequeId,
+            chequeData.chequeInfo.payer,
+            finalSignOver.signOverInfo.newPayee,
             chequeData.chequeInfo.amount
         );
     }

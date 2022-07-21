@@ -415,7 +415,7 @@ describe("ChequeBank", function () {
 
       describe("redeemSignOver", async () => {
         it("Should redeemSignOver successfully", async () => {
-          await chequeBank.connect(addr2).redeemSignOver(
+          let tx = await chequeBank.connect(addr2).redeemSignOver(
             {
               chequeInfo: chequeInfo,
               sig: chequeInfoSig,
@@ -427,7 +427,9 @@ describe("ChequeBank", function () {
               },
             ]
           );
-
+          let receipt = await tx.wait();
+          expect(receipt.events?.length).equal(2);
+          // TODO how to check multiple events emitted?
           let balanceAfter = await chequeBank.balanceOf();
           expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
         });
