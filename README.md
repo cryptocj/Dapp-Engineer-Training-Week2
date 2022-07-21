@@ -1,3 +1,4 @@
+# Week2 assignment
 The game logic is in chain directory, can ignore web3app first.
 
 ## Coding part
@@ -32,3 +33,50 @@ npx hardhat test
   Improved solution:
   1. it's better to generate a true random secret number nobody could know it before the reveal, such as https://docs.chain.link/docs/chainlink-vrf/
   2. there is no host, everyone could be a player
+
+# Week3 assignment
+
+## Task 1: Smart Contract Optimization
+
+can run the tests by
+```shell
+npx hardhat test --grep "FruitStand"
+```
+
+There are three optimized version in:
+- `contracts/OptimizedFruitStand.sol`
+- `contracts/OptimizedFruitStandV2.sol`
+- `contracts/OptimizedFruitStandV3.sol`
+
+### same parts
+1. All have this optimization:
+```solidity
+    ERC20 immutable water;
+    ERC20 immutable melon;
+```
+
+2. and this:
+`uint8 errCode` -> `uint256 errCode`
+
+3. and the new implementation of `fib`.
+
+### different parts
+The different is mainly on the `payout` function:
+
+- the first version only includes new fib function
+- the second version uses mapping to store all the fib values in advance
+- the third version uses cache to store the fib values (I like this one)
+
+## Task 2: Smart Contract Development: Ethereum e-Cheque
+
+can run the tests by
+```shell
+npx hardhat test --grep "ChequeBank"
+```
+
+the path is `contracts/ChequeBank.sol`
+
+This one is a little bit complex but interesting, 
+I added a lot of test cases should split into shore files for simplicity,
+I think I still need time to discuss about the requirements and check if the test case is enough.
+
