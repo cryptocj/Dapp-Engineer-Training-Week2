@@ -15,12 +15,14 @@ describe("ChequeBank", function () {
   let chequeBank: ChequeBank;
   let ChequeBank: ChequeBank__factory;
   let gasPrice: BigNumber;
+  let chequeAmount: BigNumber;
   beforeEach(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     provider = waffle.provider;
     ChequeBank = await ethers.getContractFactory("ChequeBank");
     chequeBank = await ChequeBank.deploy();
     gasPrice = await provider.getGasPrice();
+    chequeAmount = ethers.utils.parseEther("0.1");
   });
   it("Should deposit successfully and change balance", async function () {
     const depositAmount = ethers.utils.parseEther("1.0");
@@ -114,7 +116,7 @@ describe("ChequeBank", function () {
       await chequeBank.deposit({ value: depositAmount });
       contractAddress = chequeBank.address;
       chequeInfo = {
-        amount: ethers.utils.parseEther("0.1"),
+        amount: chequeAmount,
         chequeId: ethers.utils.hexZeroPad(
           ethers.utils.toUtf8Bytes("11111111"),
           32
@@ -376,13 +378,20 @@ describe("ChequeBank", function () {
           signOvers.push({ signOverInfo: newSignOverInfo, sig: newSig });
         }
 
-        await chequeBank.connect(addr2).redeemSignOver(
-          {
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          },
-          signOvers
-        );
+        let txFee = BigNumber.from(0);
+
+        let balanceDelta = await balanceChanged(addrs[3], async () => {
+          let tx = await chequeBank.connect(addrs[3]).redeemSignOver(
+            {
+              chequeInfo: chequeInfo,
+              sig: chequeInfoSig,
+            },
+            signOvers
+          );
+          let receipt = await tx.wait();
+          txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+        });
+        expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
       });
     });
   });
