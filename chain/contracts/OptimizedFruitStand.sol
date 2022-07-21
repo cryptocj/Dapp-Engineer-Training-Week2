@@ -53,7 +53,7 @@ contract OptimizedFruitStand {
 
     function payout(address user, UserStake memory stake)
         internal
-        returns (uint8 errCode)
+        returns (uint256 errCode)
     {
         uint256 blockDelta = block.number - stake.startBlock;
         if (blockDelta > 300) {
