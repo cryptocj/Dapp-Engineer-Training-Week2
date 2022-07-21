@@ -24,6 +24,7 @@ describe("ChequeBank", function () {
     gasPrice = await provider.getGasPrice();
     chequeAmount = ethers.utils.parseEther("0.1");
   });
+
   it("Should deposit successfully and change balance", async function () {
     const depositAmount = ethers.utils.parseEther("1.0");
     let balance = await chequeBank.balanceOf();
@@ -40,6 +41,17 @@ describe("ChequeBank", function () {
     });
     let balance = await chequeBank.balanceOf();
     expect(balance).equal(0);
+  });
+
+  it("Should emit Deposit event if deposit successfully", async () => {
+    const depositAmount = ethers.utils.parseEther("1.0");
+    await expect(
+      chequeBank.deposit({
+        value: depositAmount,
+      })
+    )
+      .to.emit(chequeBank, "Deposit")
+      .withArgs(owner.address, depositAmount);
   });
 
   it("Should withdraw successfully and change balance", async function () {
