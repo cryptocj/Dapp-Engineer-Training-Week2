@@ -70,7 +70,9 @@ describe("ChequeBank", function () {
   it("Should withdrawTo successfully and change balance", async function () {
     await chequeBank.deposit({ value: depositAmount });
     let balanceDelta = await balanceChanged(addr1, async () => {
-      await chequeBank.withdrawTo(depositAmount, addr1.address);
+      await expect(chequeBank.withdrawTo(depositAmount, addr1.address))
+        .to.emit(chequeBank, "WithdrawTo")
+        .withArgs(owner.address, addr1.address, depositAmount);
     });
     expect(balanceDelta).equal(depositAmount);
   });

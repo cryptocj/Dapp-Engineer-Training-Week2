@@ -35,6 +35,7 @@ contract ChequeBank {
 
     event Deposit(address indexed from, uint256 value);
     event Withdraw(address indexed to, uint256 value);
+    event WithdrawTo(address indexed from, address indexed to, uint256 value);
 
     modifier hasEnoughBalance(uint256 amount) {
         require(
@@ -113,8 +114,11 @@ contract ChequeBank {
         external
         hasEnoughBalance(amount)
     {
-        _balances[msg.sender] -= amount;
-        recipient.transfer(amount);
+        if (amount > 0) {
+            _balances[msg.sender] -= amount;
+            recipient.transfer(amount);
+            emit WithdrawTo(msg.sender, recipient, amount);
+        }
     }
 
     function balanceOf() external view returns (uint256) {
