@@ -216,12 +216,17 @@ describe("ChequeBank", function () {
         oldPayee: string;
         newPayee: string;
       }
+      interface SignOver {
+        signOverInfo: SignOverInfo;
+        sig: string;
+      }
       let signOverInfo: SignOverInfo;
       let signOverInfoSig: string;
       let signOverMagicNumber: string;
 
       async function getSigOfSignChequeInfo(
-        signOverInfo: SignOverInfo
+        signOverInfo: SignOverInfo,
+        signer: SignerWithAddress
       ): Promise<string> {
         signOverMagicNumber = "0xFFFFDEAD";
         const messageHash = ethers.utils.keccak256(
@@ -237,7 +242,7 @@ describe("ChequeBank", function () {
           )
         );
         let messageHashBytes = ethers.utils.arrayify(messageHash);
-        let sig = await addr1.signMessage(messageHashBytes);
+        let sig = await signer.signMessage(messageHashBytes);
         return sig;
       }
       this.beforeEach(async () => {
@@ -250,7 +255,7 @@ describe("ChequeBank", function () {
           oldPayee: addr1.address,
           newPayee: addr2.address,
         };
-        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
+        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo, addr1);
       });
 
       it("Should success", async function () {
@@ -266,7 +271,7 @@ describe("ChequeBank", function () {
       it("Should success 6 times with incremental counter", async function () {
         for (let index = 1; index <= 6; index++) {
           signOverInfo.counter = index;
-          signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
+          signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo, addr1);
           await chequeBank.notifySignOver({
             signOverInfo: signOverInfo,
             sig: signOverInfoSig,
@@ -279,7 +284,7 @@ describe("ChequeBank", function () {
 
       it("Should failed if payee mismatched", async () => {
         signOverInfo.oldPayee = owner.address;
-        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
+        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo, addr1);
         await expect(
           chequeBank.notifySignOver({
             signOverInfo: signOverInfo,
@@ -291,7 +296,7 @@ describe("ChequeBank", function () {
       it("Should failed if counter is not in the range [1,6]", async function () {
         [0, 7].forEach(async function (value) {
           signOverInfo.counter = value;
-          signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
+          signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo, addr1);
           await expect(
             chequeBank.notifySignOver({
               signOverInfo: signOverInfo,
@@ -308,7 +313,7 @@ describe("ChequeBank", function () {
         });
 
         signOverInfo.counter = 3;
-        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo);
+        signOverInfoSig = await getSigOfSignChequeInfo(signOverInfo, addr1);
         await expect(
           chequeBank.connect(addr2).notifySignOver({
             signOverInfo: signOverInfo,
@@ -349,6 +354,35 @@ describe("ChequeBank", function () {
 
         let balanceAfter = await chequeBank.balanceOf();
         expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
+      });
+
+      it("Should redeemSignOver successfully with multiple sign over", async () => {
+        let signOvers = new Array<SignOver>();
+        let newSignOverInfo;
+        let newSig;
+
+        chequeInfo.payee = addrs[0].address;
+        chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+
+        for (let index = 1; index <= 3; index++) {
+          newSignOverInfo = { ...signOverInfo };
+          newSignOverInfo.counter = index;
+          newSignOverInfo.oldPayee = addrs[index - 1].address;
+          newSignOverInfo.newPayee = addrs[index].address;
+          newSig = await getSigOfSignChequeInfo(
+            newSignOverInfo,
+            addrs[index - 1]
+          );
+          signOvers.push({ signOverInfo: newSignOverInfo, sig: newSig });
+        }
+
+        await chequeBank.connect(addr2).redeemSignOver(
+          {
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          },
+          signOvers
+        );
       });
     });
   });
