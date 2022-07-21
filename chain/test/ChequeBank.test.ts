@@ -238,7 +238,18 @@ describe("ChequeBank", function () {
     });
 
     // TODO
-    it("Should expired", async () => {});
+    it("Should be invalid if validFrom is greater than block number", async () => {
+      chequeInfo.validFrom = 10;
+      chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith(
+        "cheque is not valid because of the block number is achieved"
+      );
+    });
 
     describe("notifySignOver", async () => {
       interface SignOverInfo {

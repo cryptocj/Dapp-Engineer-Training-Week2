@@ -56,8 +56,10 @@ contract ChequeBank {
         if (
             _revokedCheques[chequeData.chequeInfo.chequeId] ==
             chequeData.chequeInfo.payer ||
-            _revokedCheques[chequeData.chequeInfo.chequeId] ==
-            _signOverInfos[chequeData.chequeInfo.chequeId].newPayee
+            (_revokedCheques[chequeData.chequeInfo.chequeId] ==
+                _signOverInfos[chequeData.chequeInfo.chequeId].newPayee &&
+                _signOverInfos[chequeData.chequeInfo.chequeId].newPayee !=
+                address(0))
         ) revert("this cheque was revoked");
 
         require(
@@ -76,6 +78,15 @@ contract ChequeBank {
                 _balances[chequeData.chequeInfo.payer],
             "not enough balance to redeem"
         );
+
+        if (
+            chequeData.chequeInfo.validFrom > 0 &&
+            chequeData.chequeInfo.validFrom > block.number
+        ) {
+            revert(
+                "cheque is not valid because of the block number is achieved"
+            );
+        }
         _;
     }
 
