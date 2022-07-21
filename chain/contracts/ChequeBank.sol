@@ -34,6 +34,7 @@ contract ChequeBank {
     mapping(bytes32 => SignOverInfo) _signOverInfos;
 
     event Deposit(address indexed from, uint256 value);
+    event Withdraw(address indexed to, uint256 value);
 
     modifier hasEnoughBalance(uint256 amount) {
         require(
@@ -101,8 +102,11 @@ contract ChequeBank {
     }
 
     function withdraw(uint256 amount) external hasEnoughBalance(amount) {
-        _balances[msg.sender] -= amount;
-        payable(msg.sender).transfer(amount);
+        if (amount > 0) {
+            _balances[msg.sender] -= amount;
+            payable(msg.sender).transfer(amount);
+            emit Withdraw(msg.sender, amount);
+        }
     }
 
     function withdrawTo(uint256 amount, address payable recipient)
