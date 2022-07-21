@@ -39,9 +39,8 @@ describe("ChequeBank", function () {
   });
 
   it("Should deposit 0 successfully without changing balance", async function () {
-    depositAmount = BigNumber.from(0);
     await chequeBank.deposit({
-      value: depositAmount,
+      value: 0,
     });
 
     let balance = await chequeBank.balanceOf();
@@ -62,6 +61,10 @@ describe("ChequeBank", function () {
     await expect(chequeBank.withdraw(depositAmount.mul(2))).revertedWith(
       "not enough balance to withdraw"
     );
+  });
+
+  it("Should not emit Withdraw event if the amount equal to 0", async function () {
+    await expect(chequeBank.withdraw(0)).to.not.emit(chequeBank, "Withdraw");
   });
 
   it("Should withdrawTo successfully and change balance", async function () {
