@@ -43,6 +43,12 @@ contract ChequeBank {
         uint256 amount
     );
     event Revoke(address indexed payer, bytes32 indexed chequeId);
+    event NotifySignOver(
+        bytes32 indexed chequeId,
+        uint256 counter,
+        address oldPayee,
+        address indexed newPayee
+    );
 
     modifier hasEnoughBalance(uint256 amount) {
         require(
@@ -188,6 +194,13 @@ contract ChequeBank {
 
         _signOverInfos[signOverData.signOverInfo.chequeId] = signOverData
             .signOverInfo;
+
+        emit NotifySignOver(
+            signOverData.signOverInfo.chequeId,
+            signOverData.signOverInfo.counter,
+            signOverData.signOverInfo.oldPayee,
+            signOverData.signOverInfo.newPayee
+        );
     }
 
     function signOverCounter(bytes32 chequeId) external view returns (uint256) {

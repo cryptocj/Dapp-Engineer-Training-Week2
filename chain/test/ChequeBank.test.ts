@@ -310,10 +310,19 @@ describe("ChequeBank", function () {
       });
 
       it("Should success", async function () {
-        await chequeBank.notifySignOver({
-          signOverInfo: signOverInfo,
-          sig: signOverInfoSig,
-        });
+        await expect(
+          chequeBank.notifySignOver({
+            signOverInfo: signOverInfo,
+            sig: signOverInfoSig,
+          })
+        )
+          .to.emit(chequeBank, "NotifySignOver")
+          .withArgs(
+            signOverInfo.chequeId,
+            signOverInfo.counter,
+            signOverInfo.oldPayee,
+            signOverInfo.newPayee
+          );
 
         let counter = await chequeBank.signOverCounter(signOverInfo.chequeId);
         expect(counter).equal(1);
