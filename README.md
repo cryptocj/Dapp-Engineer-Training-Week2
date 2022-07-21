@@ -61,7 +61,7 @@ There are three optimized version in:
 3. and the new implementation of `fib`.
 
 ### different parts
-The different is mainly on the `payout` function:
+The difference is mainly on the `payout` function:
 
 - the first version only includes new fib function
 - the second version uses mapping to store all the fib values in advance
@@ -77,6 +77,7 @@ npx hardhat test --grep "ChequeBank"
 the path is `contracts/ChequeBank.sol`
 
 This one is a little bit complex but interesting, 
-I added a lot of test cases should split into shore files for simplicity,
-I think I still need time to discuss about the requirements and check if the test case is enough.
+I added a lot of test cases which should be split into short files by method for simplicity,
+I think I still need more time to discuss about the requirements and check if the test case is enough.
+But I would like to spent the time on the final project, so I choose to submit now :D.
 
