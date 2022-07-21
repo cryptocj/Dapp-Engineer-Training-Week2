@@ -237,7 +237,6 @@ describe("ChequeBank", function () {
       ).revertedWith("this cheque was revoked");
     });
 
-    // TODO
     it("Should be invalid if validFrom is greater than block number", async () => {
       chequeInfo.validFrom = 10;
       chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
@@ -251,6 +250,16 @@ describe("ChequeBank", function () {
       );
     });
 
+    it("Should be expired if validThru is less and equal than block number", async () => {
+      chequeInfo.validThru = 1;
+      chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      ).revertedWith("cheque is expired");
+    });
     describe("notifySignOver", async () => {
       interface SignOverInfo {
         counter: BigNumberish;

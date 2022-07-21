@@ -87,6 +87,13 @@ contract ChequeBank {
                 "cheque is not valid because of the block number is achieved"
             );
         }
+
+        if (
+            chequeData.chequeInfo.validThru > 0 &&
+            chequeData.chequeInfo.validThru <= block.number
+        ) {
+            revert("cheque is expired");
+        }
         _;
     }
 
@@ -170,8 +177,6 @@ contract ChequeBank {
             chequeData.chequeInfo.amount
         );
     }
-
-    event Revoke(address indexed payer, bytes32 indexed chequeId);
 
     function revoke(bytes32 chequeId) external {
         _revokedCheques[chequeId] = msg.sender;
