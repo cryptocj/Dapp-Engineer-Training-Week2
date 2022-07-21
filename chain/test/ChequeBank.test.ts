@@ -339,59 +339,91 @@ describe("ChequeBank", function () {
         expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
       });
 
-      // ================ redeemSignOver =======================
-      it("Should redeemSignOver successfully", async () => {
-        await chequeBank.connect(addr2).redeemSignOver(
-          {
-            chequeInfo: chequeInfo,
-            sig: chequeInfoSig,
-          },
-          [
-            {
-              signOverInfo: signOverInfo,
-              sig: signOverInfoSig,
-            },
-          ]
-        );
-
-        let balanceAfter = await chequeBank.balanceOf();
-        expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
-      });
-
-      it("Should redeemSignOver successfully with multiple sign over", async () => {
-        let signOvers = new Array<SignOver>();
-        let newSignOverInfo;
-        let newSig;
-
-        chequeInfo.payee = addrs[0].address;
-        chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
-
-        for (let index = 1; index <= 3; index++) {
-          newSignOverInfo = { ...signOverInfo };
-          newSignOverInfo.counter = index;
-          newSignOverInfo.oldPayee = addrs[index - 1].address;
-          newSignOverInfo.newPayee = addrs[index].address;
-          newSig = await getSigOfSignChequeInfo(
-            newSignOverInfo,
-            addrs[index - 1]
-          );
-          signOvers.push({ signOverInfo: newSignOverInfo, sig: newSig });
-        }
-
-        let txFee = BigNumber.from(0);
-
-        let balanceDelta = await balanceChanged(addrs[3], async () => {
-          let tx = await chequeBank.connect(addrs[3]).redeemSignOver(
+      describe("redeemSignOver", async () => {
+        it("Should redeemSignOver successfully", async () => {
+          await chequeBank.connect(addr2).redeemSignOver(
             {
               chequeInfo: chequeInfo,
               sig: chequeInfoSig,
             },
-            signOvers
+            [
+              {
+                signOverInfo: signOverInfo,
+                sig: signOverInfoSig,
+              },
+            ]
           );
-          let receipt = await tx.wait();
-          txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+
+          let balanceAfter = await chequeBank.balanceOf();
+          expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
         });
-        expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
+
+        it("Should redeemSignOver successfully with multiple sign over", async () => {
+          let signOvers = new Array<SignOver>();
+          let newSignOverInfo;
+          let newSig;
+
+          chequeInfo.payee = addrs[0].address;
+          chequeInfoSig = await signChequeInfo(chequeInfo, contractAddress);
+
+          for (let index = 1; index <= 3; index++) {
+            newSignOverInfo = { ...signOverInfo };
+            newSignOverInfo.counter = index;
+            newSignOverInfo.oldPayee = addrs[index - 1].address;
+            newSignOverInfo.newPayee = addrs[index].address;
+            newSig = await getSigOfSignChequeInfo(
+              newSignOverInfo,
+              addrs[index - 1]
+            );
+            signOvers.push({ signOverInfo: newSignOverInfo, sig: newSig });
+          }
+
+          let txFee = BigNumber.from(0);
+
+          let balanceDelta = await balanceChanged(addrs[3], async () => {
+            let tx = await chequeBank.connect(addrs[3]).redeemSignOver(
+              {
+                chequeInfo: chequeInfo,
+                sig: chequeInfoSig,
+              },
+              signOvers
+            );
+            let receipt = await tx.wait();
+            txFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+          });
+          expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
+        });
+      });
+
+      describe("isChequeValid", async () => {
+        it("Should be valid with sign over", async () => {
+          let isValid = await chequeBank.connect(addr2).isChequeValid(
+            addr2.address,
+            {
+              chequeInfo: chequeInfo,
+              sig: chequeInfoSig,
+            },
+            [
+              {
+                signOverInfo: signOverInfo,
+                sig: signOverInfoSig,
+              },
+            ]
+          );
+          expect(isValid).equal(true);
+        });
+
+        it("Should be valid with empty sign over", async () => {
+          let isValid = await chequeBank.connect(addr1).isChequeValid(
+            addr1.address,
+            {
+              chequeInfo: chequeInfo,
+              sig: chequeInfoSig,
+            },
+            []
+          );
+          expect(isValid).equal(true);
+        });
       });
     });
   });

@@ -191,7 +191,33 @@ contract ChequeBank {
         address payee,
         Cheque memory chequeData,
         SignOver[] memory signOverData
-    ) public view returns (bool) {}
+    ) public view redeemCheck(chequeData) returns (bool) {
+        if (signOverData.length == 0) {
+            return chequeData.chequeInfo.payee == payee;
+        }
+
+        for (uint256 index = 0; index < signOverData.length; index++) {
+            _signOverCheck(signOverData[index]);
+
+            if (
+                signOverData[index].signOverInfo.chequeId !=
+                chequeData.chequeInfo.chequeId
+            ) {
+                revert("mismatched cheque id");
+            }
+        }
+
+        // the payee of cheque is the oldPayee of the first signOver
+        require(
+            chequeData.chequeInfo.payee ==
+                signOverData[0].signOverInfo.oldPayee,
+            "mismatched payee"
+        );
+
+        SignOver memory finalSignOver = signOverData[signOverData.length - 1];
+
+        return payee == finalSignOver.signOverInfo.newPayee;
+    }
 
     function verifyCheque(Cheque memory chequeData)
         private
