@@ -16,6 +16,8 @@ describe("ChequeBank", function () {
   let ChequeBank: ChequeBank__factory;
   let gasPrice: BigNumber;
   let chequeAmount: BigNumber;
+  let depositAmount: BigNumber;
+
   beforeEach(async function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     provider = waffle.provider;
@@ -23,47 +25,39 @@ describe("ChequeBank", function () {
     chequeBank = await ChequeBank.deploy();
     gasPrice = await provider.getGasPrice();
     chequeAmount = ethers.utils.parseEther("0.1");
+    depositAmount = ethers.utils.parseEther("1.0");
   });
 
   it("Should deposit successfully and change balance", async function () {
-    const depositAmount = ethers.utils.parseEther("1.0");
     let balance = await chequeBank.balanceOf();
     expect(balance).equal(0);
-    await chequeBank.deposit({ value: depositAmount });
+    await expect(chequeBank.deposit({ value: depositAmount }))
+      .to.emit(chequeBank, "Deposit")
+      .withArgs(owner.address, depositAmount);
     balance = await chequeBank.balanceOf();
     expect(balance).equal(depositAmount);
   });
 
   it("Should deposit 0 successfully without changing balance", async function () {
-    const depositAmount = 0;
+    depositAmount = BigNumber.from(0);
     await chequeBank.deposit({
       value: depositAmount,
     });
+
     let balance = await chequeBank.balanceOf();
     expect(balance).equal(0);
   });
 
-  it("Should emit Deposit event if deposit successfully", async () => {
-    const depositAmount = ethers.utils.parseEther("1.0");
-    await expect(
-      chequeBank.deposit({
-        value: depositAmount,
-      })
-    )
-      .to.emit(chequeBank, "Deposit")
-      .withArgs(owner.address, depositAmount);
-  });
-
   it("Should withdraw successfully and change balance", async function () {
-    const depositAmount = ethers.utils.parseEther("1.0");
     await chequeBank.deposit({ value: depositAmount });
-    await chequeBank.withdraw(depositAmount);
+    await expect(chequeBank.withdraw(depositAmount))
+      .to.emit(chequeBank, "Withdraw")
+      .withArgs(owner.address, depositAmount);
     let balance = await chequeBank.balanceOf();
     expect(balance).equal(0);
   });
 
   it("Should withdraw failed if not enough balance", async function () {
-    const depositAmount = ethers.utils.parseEther("1.0");
     await chequeBank.deposit({ value: depositAmount });
     await expect(chequeBank.withdraw(depositAmount.mul(2))).revertedWith(
       "not enough balance to withdraw"
@@ -71,7 +65,6 @@ describe("ChequeBank", function () {
   });
 
   it("Should withdrawTo successfully and change balance", async function () {
-    const depositAmount = ethers.utils.parseEther("1.0");
     await chequeBank.deposit({ value: depositAmount });
     let balanceDelta = await balanceChanged(addr1, async () => {
       await chequeBank.withdrawTo(depositAmount, addr1.address);
