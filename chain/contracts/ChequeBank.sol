@@ -42,6 +42,7 @@ contract ChequeBank {
         address indexed payee,
         uint256 amount
     );
+    event Revoke(address indexed payer, bytes32 indexed chequeId);
 
     modifier hasEnoughBalance(uint256 amount) {
         require(

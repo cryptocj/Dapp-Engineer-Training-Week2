@@ -225,7 +225,10 @@ describe("ChequeBank", function () {
     });
 
     it("Should redeem failed if revoked", async () => {
-      await chequeBank.revoke(chequeInfo.chequeId);
+      await expect(chequeBank.revoke(chequeInfo.chequeId))
+        .to.emit(chequeBank, "Revoke")
+        .withArgs(owner.address, chequeInfo.chequeId);
+
       await expect(
         chequeBank.connect(addr1).redeem({
           chequeInfo: chequeInfo,
