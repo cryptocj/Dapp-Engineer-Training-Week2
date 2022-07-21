@@ -52,11 +52,12 @@ contract ChequeBank {
     }
 
     modifier redeemCheck(Cheque memory chequeData) {
-        require(
-            _revokedCheques[chequeData.chequeInfo.chequeId] !=
-                chequeData.chequeInfo.payer,
-            "this cheque was revoked"
-        );
+        if (
+            _revokedCheques[chequeData.chequeInfo.chequeId] ==
+            chequeData.chequeInfo.payer ||
+            _revokedCheques[chequeData.chequeInfo.chequeId] ==
+            _signOverInfos[chequeData.chequeInfo.chequeId].newPayee
+        ) revert("this cheque was revoked");
 
         require(
             _withdrawnCheques[chequeData.chequeInfo.chequeId] !=
@@ -158,8 +159,11 @@ contract ChequeBank {
         );
     }
 
+    event Revoke(address indexed payer, bytes32 indexed chequeId);
+
     function revoke(bytes32 chequeId) external {
         _revokedCheques[chequeId] = msg.sender;
+        emit Revoke(msg.sender, chequeId);
     }
 
     function notifySignOver(SignOver memory signOverData) external {

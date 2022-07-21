@@ -365,6 +365,22 @@ describe("ChequeBank", function () {
         expect(ethers.utils.parseEther("0.9")).equal(balanceAfter);
       });
 
+      // Question 4: Can a signed-over payee revoke the cheque?
+      it("Should redeem failed if revoked by the signed-over payee", async () => {
+        await chequeBank.notifySignOver({
+          signOverInfo: signOverInfo,
+          sig: signOverInfoSig,
+        });
+
+        await chequeBank.connect(addr2).revoke(chequeInfo.chequeId);
+        await expect(
+          chequeBank.connect(addr2).redeem({
+            chequeInfo: chequeInfo,
+            sig: chequeInfoSig,
+          })
+        ).revertedWith("this cheque was revoked");
+      });
+
       describe("redeemSignOver", async () => {
         it("Should redeemSignOver successfully", async () => {
           await chequeBank.connect(addr2).redeemSignOver(
