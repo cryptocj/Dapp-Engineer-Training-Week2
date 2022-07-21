@@ -469,6 +469,18 @@ describe("ChequeBank", function () {
           });
           expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
         });
+
+        it("Should failed if with empty signOvers", async () => {
+          await expect(
+            chequeBank.connect(addr2).redeemSignOver(
+              {
+                chequeInfo: chequeInfo,
+                sig: chequeInfoSig,
+              },
+              []
+            )
+          ).revertedWith("no sign over founded");
+        });
       });
 
       describe("isChequeValid", async () => {

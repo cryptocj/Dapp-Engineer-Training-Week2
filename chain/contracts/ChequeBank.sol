@@ -211,6 +211,8 @@ contract ChequeBank {
         Cheque memory chequeData,
         SignOver[] memory signOverData
     ) external redeemCheck(chequeData) {
+        require(signOverData.length > 0, "no sign over founded");
+
         for (uint256 index = 0; index < signOverData.length; index++) {
             _signOverCheck(signOverData[index]);
 
