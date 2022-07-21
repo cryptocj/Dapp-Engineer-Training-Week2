@@ -154,6 +154,17 @@ describe("ChequeBank", function () {
       expect(txFee.add(balanceDelta)).equal(chequeInfo.amount);
     });
 
+    it("Should emit Redeem event after redeem successfully", async () => {
+      await expect(
+        chequeBank.connect(addr1).redeem({
+          chequeInfo: chequeInfo,
+          sig: chequeInfoSig,
+        })
+      )
+        .to.emit(chequeBank, "Redeem")
+        .withArgs(chequeInfo.payer, chequeInfo.payee, chequeInfo.amount);
+    });
+
     it("Should not redeem twice", async function () {
       await chequeBank.connect(addr1).redeem({
         chequeInfo: chequeInfo,
