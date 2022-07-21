@@ -75,7 +75,7 @@ contract ChequeBank {
         );
 
         require(
-            verifyCheque(chequeData) == chequeData.chequeInfo.payer,
+            _verifyCheque(chequeData) == chequeData.chequeInfo.payer,
             "mismatched payer"
         );
 
@@ -105,7 +105,7 @@ contract ChequeBank {
 
     function _signOverCheck(SignOver memory signOverData) private view {
         require(
-            verifySignOver(signOverData) == signOverData.signOverInfo.oldPayee,
+            _verifySignOver(signOverData) == signOverData.signOverInfo.oldPayee,
             "mismatched old payee"
         );
 
@@ -291,7 +291,7 @@ contract ChequeBank {
         return payee == finalSignOver.signOverInfo.newPayee;
     }
 
-    function verifyCheque(Cheque memory chequeData)
+    function _verifyCheque(Cheque memory chequeData)
         private
         view
         returns (address signer)
@@ -308,10 +308,10 @@ contract ChequeBank {
             )
         );
 
-        return verifyMessage(message, chequeData.sig);
+        return _verifyMessage(message, chequeData.sig);
     }
 
-    function verifySignOver(SignOver memory signOver)
+    function _verifySignOver(SignOver memory signOver)
         private
         pure
         returns (address signer)
@@ -326,10 +326,10 @@ contract ChequeBank {
             )
         );
 
-        return verifyMessage(message, signOver.sig);
+        return _verifyMessage(message, signOver.sig);
     }
 
-    function verifyMessage(bytes32 message, bytes memory sig)
+    function _verifyMessage(bytes32 message, bytes memory sig)
         private
         pure
         returns (address signer)
@@ -340,13 +340,13 @@ contract ChequeBank {
         uint8 v;
         bytes32 r;
         bytes32 s;
-        (v, r, s) = splitSignature(sig);
+        (v, r, s) = _splitSignature(sig);
 
         return ecrecover(messageDigest, v, r, s);
     }
 
-    function splitSignature(bytes memory sig)
-        public
+    function _splitSignature(bytes memory sig)
+        private
         pure
         returns (
             uint8,
