@@ -36,7 +36,12 @@ contract ChequeBank {
     event Deposit(address indexed from, uint256 value);
     event Withdraw(address indexed to, uint256 value);
     event WithdrawTo(address indexed from, address indexed to, uint256 value);
-    event Redeem(address indexed payer, address indexed payee, uint256 amount);
+    event Redeem(
+        bytes32 indexed chequeId,
+        address indexed payer,
+        address indexed payee,
+        uint256 amount
+    );
 
     modifier hasEnoughBalance(uint256 amount) {
         require(
@@ -146,6 +151,7 @@ contract ChequeBank {
         );
 
         emit Redeem(
+            chequeData.chequeInfo.chequeId,
             chequeData.chequeInfo.payer,
             chequeData.chequeInfo.payee,
             chequeData.chequeInfo.amount

@@ -162,7 +162,12 @@ describe("ChequeBank", function () {
         })
       )
         .to.emit(chequeBank, "Redeem")
-        .withArgs(chequeInfo.payer, chequeInfo.payee, chequeInfo.amount);
+        .withArgs(
+          chequeInfo.chequeId,
+          chequeInfo.payer,
+          chequeInfo.payee,
+          chequeInfo.amount
+        );
     });
 
     it("Should not redeem twice", async function () {
